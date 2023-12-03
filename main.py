@@ -16,8 +16,10 @@ from timeit import default_timer as timer
 import time
 from matrix4 import Matrix4
 from vector import Vector3
-from object import Object, Cube, Pyramid, Square, Cylinder, Sphere
+from object import Object
 from camera import Camera
+from scene import Scene
+from parser import ObjParser
 
 # Number of the glut window.
 window = 0
@@ -30,14 +32,34 @@ rquad = 0.0
 
 fps = 60
 
-
 camera = Camera()
-camera.lookAt(Vector3(0, 0, -8), Vector3(0, 0, 0), Vector3(0, 1, 0))
+scenes = []
 
-obj_index = 0
-obj_list = [Square(), Cube(), Cylinder(), Sphere()]
-obj = Square()
 
+#obj_index = 0
+#obj_list = [Square(), Cube(), Cylinder(), Sphere()]
+#obj = Square()
+
+def SceneInitiliazer():
+    global camera, scenes
+    camera.lookAt(Vector3(0, 0, -8), Vector3(0, 0, 0), Vector3(0, 1, 0))
+
+    parser = ObjParser()
+    parser.parse("tori.obj")
+
+    obj = Object(parser.vertices, faces=parser.faces)
+
+
+
+
+
+    scenes.append(Scene([obj]))
+
+def DrawScene():
+    global camera, scenes
+
+    for s in scenes:
+        s.draw_scene(camera)
 
 def print_instructions():
     print("Instructions:")
@@ -68,6 +90,8 @@ def InitGL(Width, Height):  # We call this right after our OpenGL window is crea
     # Calculate The Aspect Ratio Of The Window
     gluPerspective(45.0, float(Width) / float(Height), 0.1, 100.0)
 
+    SceneInitiliazer()
+
     print_instructions()
 
     glMatrixMode(GL_MODELVIEW)
@@ -93,9 +117,9 @@ def DrawGLScene():
 
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);  # Clear The Screen And The Depth Buffer
 
-    glPolygonMode( GL_FRONT_AND_BACK, GL_LINE )
+    #glPolygonMode( GL_FRONT_AND_BACK, GL_LINE )
 
-    obj_list[obj_index].draw(camera)
+    DrawScene()
 
     rtri = rtri + 0.01  # Increase The Rotation Variable For The Triangle
 
@@ -119,6 +143,7 @@ def keyPressed(key, x, y):
         glutDestroyWindow(window)
         return
 
+    """
     if ord(key) == ord('m'):
 
         if obj_index + 1 < len(obj_list):
@@ -130,7 +155,7 @@ def keyPressed(key, x, y):
         if obj_index - 1 >= 0:
             obj_index -= 1
         return
-
+    """
 
     if ord(key) == ord('r'):
         camera.rotate_y_cw()
@@ -171,7 +196,11 @@ def keyPressed(key, x, y):
         camera.move_right()
         camera.calculate()
         return
+    if ord(key) == ord('o'):
+        scenes[0].objects[0].catmull_clark_sub()
+        return
 
+    """
     if ord(key) == ord('o'):
         obj_list[obj_index].increase_subdivision()
         return
@@ -179,7 +208,7 @@ def keyPressed(key, x, y):
     if ord(key) == ord('l'):
         obj_list[obj_index].decrease_subdivision()
         return
-
+    """
 
 
 

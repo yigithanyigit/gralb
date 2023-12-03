@@ -37,6 +37,34 @@ class Vector:
         else:
             raise TypeError("Values Must Be Scalar")
 
+    def __truediv__(self, scalar):
+        if isinstance(scalar, int) or isinstance(scalar, float):
+            temp = []
+            for x in self.elements:
+                temp.append(x / scalar)
+            return type(self)(*temp)
+        else:
+            raise TypeError("Values Must Be Scalar")
+
+
+    def __hash__(self):
+        return hash(tuple(self.elements))
+
+    def __eq__(self, other):
+        zipped = zip(self.elements, other.elements)
+        for a, b in zipped:
+            if a != b:
+                return False
+        return True
+
+    def __ne__(self, other):
+        zipped = zip(self.elements, other.elements)
+        for a, b in zipped:
+            if a != b:
+                return True
+        return False
+
+
     def normalize(self):
         multp = 0
         for a, b in zip(self.elements, self.elements):
@@ -69,9 +97,37 @@ class Vector:
     def calculate_projection(self):
         pass
 
+class Vector2(Vector):
+    def __init__(self, x=None, y=None):
+        if x is None and y is None:
+            x, y = 0, 0
+        super().__init__(x, y)
+
+    def __str__(self):
+        return f"{self.elements[0:2]}"
+
+    def x(self):
+        return float(self.elements[0])
+
+    def y(self):
+        return float(self.elements[1])
+
+class Edge(Vector2):
+    def __init__(self, x, y):
+        super().__init__(x,y)
+
+    def __hash__(self):
+        self.elements.sort()
+        return hash(tuple(self.elements))
+
+    def add_new_vertex(self, vertex):
+        return Edge(self.x, vertex), Edge(vertex, self.y)
+
 
 class Vector3(Vector):
-    def __init__(self, x, y, z):
+    def __init__(self, x=None, y=None, z=None):
+        if x is None and y is None and z is None:
+            x, y, z = 0, 0, 0
         super().__init__(x, y, z)
 
     def __str__(self):
@@ -92,6 +148,7 @@ class Vector3(Vector):
 
     def z(self):
         return float(self.elements[2])
+
 
     def normalize(self):
         xxyyzz = self.x() * self.x() + self.y() * self.y() + self.z() * self.z()
@@ -132,6 +189,8 @@ class Vector4(Vector):
 
     def w(self):
         return float(self.elements[2])
+
+
 
 
 if __name__ == "__main__":
