@@ -1,19 +1,19 @@
 from parser import ObjParser
 from vector import Edge, Vector3
 from collections import OrderedDict
+from utils import remove_duplicates
 
 
 class AdjacencyList:
-    def __init__(self, vertices, faces):
+    def __init__(self, vertices, faces, edges):
         self.vertices = vertices
         self.faces = faces  # Default Triangular
-        self.edges = []
+        self.edges = edges
 
         # For faster findings
         self.edges_map = OrderedDict()
 
-
-        self.make_edges()
+        self.make_edges_map()
 
         self.v_e = [[] for v in self.vertices]
         self.v_f = [[] for v in self.vertices]
@@ -54,14 +54,6 @@ class AdjacencyList:
         return result
     """
 
-    def remove_duplicates(self, input_list):
-
-        seen = OrderedDict.fromkeys(input_list)
-
-        result = list(seen.keys())
-
-        return result
-
     """
     # Quad Triangulazation
     # Triangle Fan can be used for bigger 4+ vertices shapes
@@ -84,22 +76,6 @@ class AdjacencyList:
                 self.edges.append(edge)
         self.edges = self._remove_duplicates(self.edges)
     """
-
-    def make_edges(self):
-        # Find all the edges in a face
-        for q, face in enumerate(self.faces):
-            es = (Edge(face[0], face[1]),
-                  Edge(face[1], face[2]),
-                  Edge(face[2], face[3]),
-                  Edge(face[3], face[0]),
-                  )
-            for e in es:
-                self.edges.append(e)
-        self.edges = self.remove_duplicates(self.edges)
-        for i, e in enumerate(self.edges):
-            self.edges_map[e] = i
-
-
 
     def map_vertices_to_edges(self, edges=None, vertex_count=None):
         # Map all vertices to a belonged edge
@@ -135,10 +111,10 @@ class AdjacencyList:
                     if edge[0] in face and edge[1] in face:
                         self.f_e[q].append(i)
                         self.e_f[i].append(q)
-            self.f_e[q] = self.remove_duplicates(self.f_e[q])
+            self.f_e[q] = remove_duplicates(self.f_e[q])
 
         for idx, e_f in enumerate(self.e_f):
-            self.e_f[idx] = self.remove_duplicates(self.e_f[idx])
+            self.e_f[idx] = remove_duplicates(self.e_f[idx])
 
     def get_index_of_vertex(self, vertex):
         for i, v in enumerate(self.vertices):
@@ -169,7 +145,6 @@ class AdjacencyList:
         return adjacency_edges
 
     def get_neighbour_faces_of_edge(self, edge_index):
-        a = self.e_f[edge_index]
         return self.e_f[edge_index]
         """
         neighbour_faces = []
@@ -181,7 +156,6 @@ class AdjacencyList:
                     break
         return neighbour_faces
         """
-
 
     """
     # For Triangulated
@@ -197,7 +171,10 @@ class AdjacencyList:
                 result.append(edge[0])
         return result
     """
-    # Writte Getter Setter For Adjency List
+
+    def make_edges_map(self):
+        for i, e in enumerate(self.edges):
+            self.edges_map[e] = i
 
 
 if "__main__" == __name__:

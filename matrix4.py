@@ -3,10 +3,12 @@
 # 10/23
 
 from vector import *
+import numpy
 import math
 
 
 class Matrix4:
+    # Default is column-major you can do row major with transpose function
     @classmethod
     def create_from_array(cls, arr, transpose=False):
         if len(arr) != 16:
@@ -21,6 +23,14 @@ class Matrix4:
                        Vector4.create_from_array([arr[1], arr[5], arr[9], arr[13]]),
                        Vector4.create_from_array([arr[2], arr[6], arr[10], arr[14]]),
                        Vector4.create_from_array([arr[3], arr[7], arr[11], arr[15]]))
+
+    @classmethod
+    def create_from_numpy_array(cls, array: numpy.array):
+        if array.shape == (4, 4):
+            array.reshape(16, 1)
+            return Matrix4.create_from_array(array.tolist())
+        elif array.shape == (16,):
+            return Matrix4.create_from_array(array.tolist())
 
     """
     @classmethod
@@ -46,10 +56,6 @@ class Matrix4:
         self.rows = [row for row in rows]
 
         self.stack = []
-
-
-
-
 
     def __add__(self, other):
         return Matrix4(*((x + y) for x, y in zip(self.rows, other.rows)))
@@ -137,6 +143,8 @@ class Matrix4:
         self.rows = temp.rows
         return self
 
+    def to_numpy_array(self):
+        return numpy.array(self.rows, dtype='float32').reshape(16, )
 
     @staticmethod
     def Rx(x):
@@ -165,6 +173,45 @@ class Matrix4:
     def T(x, y, z):
         return Matrix4.create_from_array([1.0, 0.0, 0.0, x, 0.0, 1.0, 0.0, y, 0.0, 0.0, 1.0, z, 0.0, 0.0, 0.0, 1.0])
 
+    @staticmethod
+    # Impelemented by Erdem Taylan
+    def getProjMatrix(near, far, aspect, fov):
+        f = numpy.reciprocal(numpy.tan(numpy.divide(numpy.deg2rad(fov), 2.0)))
+        base = near - far
+        term_0_0 = numpy.divide(f, aspect)
+        term_2_2 = numpy.divide(far + near, base)
+        term_2_3 = numpy.divide(numpy.multiply(numpy.multiply(2, near), far), base)
+
+        # https://en.wikibooks.org/wiki/GLSL_Programming/Vertex_Transformations
+        return Matrix4.create_from_array(numpy.array([term_0_0, 0.0, 0.0, 0.0,
+                                                      0.0, f, 0.0, 0.0,
+                                                      0.0, 0.0, term_2_2, -1,
+                                                      0.0, 0.0, term_2_3, 0.0], dtype='float32'), transpose=True)
+
+    @staticmethod
+    # Implemented By Erdem Taylan
+    def getViewMatrix(camPosition, camUpAxis):
+        # THIS HAS A LOT OF HARD CODED STUFF
+        # we first calculate camera x, y, z axises and from those we assemble a rotation matrix.
+        # Once that is done we add in the translation.
+        # We assume camera always look at the world space origin.
+        # Up vector is always in the direction of global yAxis.
+        camZAxis = (camPosition * -1).normalize()
+        camXAxis = camZAxis.cross_product(camUpAxis)
+        camYAxis = camXAxis.cross_product(camZAxis)
+
+        rotMat = numpy.array([camXAxis[0], camYAxis[0], -camZAxis[0], 0.0,
+                              camXAxis[1], camYAxis[1], -camZAxis[1], 0.0,
+                              camXAxis[2], camYAxis[2], -camZAxis[2], 0.0,
+                              0.0, 0.0, 0.0, 1.0], dtype='float32').reshape(4, 4)
+
+        traMat = numpy.array([1.0, 0.0, 0.0, 0.0,
+                              0.0, 1.0, 0.0, 0.0,
+                              0.0, 0.0, 1.0, 0.0,
+                              -camPosition[0], -camPosition[1], -camPosition[2], 1.0], dtype='float32').reshape(4, 4)
+
+        return Matrix4.create_from_array(traMat.dot(rotMat).reshape(16, ).tolist(), transpose=True)
+
 
 if __name__ == "__main__":
     m1 = Matrix4.create_from_array([1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1, 0, 0, 0, 0, 1])
@@ -174,4 +221,11 @@ if __name__ == "__main__":
          1.0])
     m2 = m2.dot_product(m1)
     m2 = m2.dot_product(m3)
-    print(m1.translate(1, 0, -12))
+    camPosition = Vector3(0.0, 0.0, 10.0)
+    camUpAxis = Vector3(0.0, 1.0, 0.0)
+    camNear = 1.0
+    camFar = 100.0
+    camAspect = 1.0
+    camFov = 60.0
+
+    print(Matrix4.getProjMatrix(camNear, camFar, camAspect, camFov))

@@ -1,5 +1,6 @@
 import math
 
+import numpy
 from OpenGL.GLU import *
 from vector import Vector3
 from matrix4 import Matrix4
@@ -13,7 +14,7 @@ class Camera:
         self.stack = []
         self.calculated_stack = False
 
-        self.eye_default = Vector3(0, 0, -8)
+        self.eye_default = Vector3(0, 0, -5)
         self.target_default = Vector3(0, 0, 0)
         self.up_default = Vector3(0,1,0)
         self.direction = Vector3(0,0,1)
@@ -22,6 +23,7 @@ class Camera:
         self.yaw = 0
         self.roll = 0
         self.constant = 0.174
+
 
 
     def _add_matrix_to_stack(self, op):
@@ -37,6 +39,7 @@ class Camera:
             return self.stack[-1]
         return None
 
+    """
     def calculate(self):
         m = self.matrix
         while self._stack_head() is not None:
@@ -45,8 +48,13 @@ class Camera:
         self.matrix.rows = m.rows
         self.calculated_stack = True
         return self
-
+    """
     def lookAt(self, eye, target, upDir = Vector3(0,1,0)):
+
+        self.eye_default = eye
+        self.target_default = target
+        self.up_default = upDir
+
         forward = eye - target
 
         forward = forward.normalize()
@@ -95,6 +103,11 @@ class Camera:
 
     def set_z(self, z):
         self.matrix.rows[3][2] = z
+
+    def set_position(self, x, y, z):
+        self.set_x(x)
+        self.set_y(x)
+        self.set_z(z)
 
     def rotate_y_ccw(self):
         self.pitch -= self.constant

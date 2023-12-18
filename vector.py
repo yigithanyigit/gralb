@@ -1,8 +1,9 @@
-# CENG 487 Assignment 1 by Yigithan Yigit
+# CENG 487 Assignment  by Yigithan Yigit
 # Erdem Taylan # StudentId: 310201112
 # 10/23
 
 import math
+import numpy as np
 
 
 class Vector:
@@ -37,6 +38,12 @@ class Vector:
         else:
             raise TypeError("Values Must Be Scalar")
 
+    def __neg__(self):
+        for idx, x in enumerate(self.elements):
+            self.elements[idx] = -x
+
+        return type(self)(*self.elements)
+
     def __truediv__(self, scalar):
         if isinstance(scalar, int) or isinstance(scalar, float):
             temp = []
@@ -45,7 +52,6 @@ class Vector:
             return type(self)(*temp)
         else:
             raise TypeError("Values Must Be Scalar")
-
 
     def __hash__(self):
         return hash(tuple(self.elements))
@@ -64,6 +70,11 @@ class Vector:
                 return True
         return False
 
+    def __abs__(self):
+        temp = []
+        for e in self.elements:
+            temp.append(-e)
+        return type(self)(*temp)
 
     def normalize(self):
         multp = 0
@@ -74,7 +85,6 @@ class Vector:
 
         for i in range(len(self.elements)):
             self.elements[i] *= invLength
-
 
     def __len__(self):
         return len(self.elements)
@@ -97,6 +107,7 @@ class Vector:
     def calculate_projection(self):
         pass
 
+
 class Vector2(Vector):
     def __init__(self, x=None, y=None):
         if x is None and y is None:
@@ -112,9 +123,10 @@ class Vector2(Vector):
     def y(self):
         return float(self.elements[1])
 
+
 class Edge(Vector2):
     def __init__(self, x, y):
-        super().__init__(x,y)
+        super().__init__(x, y)
 
     def __hash__(self):
         self.elements.sort()
@@ -135,9 +147,9 @@ class Vector3(Vector):
 
     def cross_product(self, other):
         result = Vector3(self.elements[1] * other.elements[2] - self.elements[2] * other.elements[1],
-                        self.elements[2] * other.elements[0] - self.elements[0] * other.elements[2],
-                        self.elements[0] * other.elements[1] - self.elements[1] * other.elements[0]
-                        )
+                         self.elements[2] * other.elements[0] - self.elements[0] * other.elements[2],
+                         self.elements[0] * other.elements[1] - self.elements[1] * other.elements[0]
+                         )
         return result
 
     def x(self):
@@ -149,6 +161,14 @@ class Vector3(Vector):
     def z(self):
         return float(self.elements[2])
 
+    def set_x(self, x):
+        self.elements[0] = x
+
+    def set_y(self, y):
+        self.elements[1] = y
+
+    def set_z(self, z):
+        self.elements[2] = z
 
     def normalize(self):
         xxyyzz = self.x() * self.x() + self.y() * self.y() + self.z() * self.z()
@@ -189,8 +209,6 @@ class Vector4(Vector):
 
     def w(self):
         return float(self.elements[2])
-
-
 
 
 if __name__ == "__main__":
