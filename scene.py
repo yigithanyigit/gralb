@@ -42,4 +42,4 @@ class Scene:
 
     def draw_scene(self, view, proj, programID):
         for obj in self.objects:
-            self.display(obj.model.to_numpy_array(), view, proj, programID, obj)
+            self.display(obj.get_model_matrix().to_numpy_array(), view, proj, programID, obj)

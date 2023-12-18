@@ -209,6 +209,11 @@ class Object:
     def get_model_matrix(self):
         return self.model_stack[-1]
 
+    def set_model_matrix(self, matrix):
+        self.model_stack = []
+        self.model = matrix.copy()
+        self._add_matrix_to_model_stack()
+
     def copy(self):
         return copy.deepcopy(self)
 
@@ -262,6 +267,9 @@ class Object:
 
     # Core profile Draw Mode
     def draw(self):
+        if self.calculated_stack is False:
+            self.calculate()
+
 
         # bind to our VAO
         glBindVertexArray(self.shader.VAO)

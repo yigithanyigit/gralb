@@ -25,7 +25,6 @@ class Camera:
         self.constant = 0.174
 
 
-
     def _add_matrix_to_stack(self, op):
         self.stack.append(op)
         self.calculated_stack = False

@@ -84,11 +84,12 @@ class Shader:
         glEnableVertexAttribArray(1)
 
 
+        """
         # define uvs which are passed in location 2 - they start after all positions and colors and has two floats per vertex
         offset += elementSize * self.vertexDim * self.nVertices
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, elementSize * 2, ctypes.c_void_p(offset))
         glEnableVertexAttribArray(2)
-
+        """
 
         # reset array buffers
         glBindBuffer(GL_ARRAY_BUFFER, 0)
