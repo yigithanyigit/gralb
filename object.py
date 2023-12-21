@@ -13,8 +13,8 @@ from shader import Shader
 
 
 class Object:
-    def __init__(self, vertices: List[Vector3], colors: List[Vector3] = None, faces=None, edges=None,
-                 adjacency_list=None, normals=None, uv=None, face_normals=None, face_uvs=None):
+    def __init__(self, vertices: List[Vector3], vertex_shader_file, fragment_shader_file,colors: List[Vector3] = None,
+                 faces=None, edges=None,adjacency_list=None, normals=None, uv=None, face_normals=None, face_uvs=None):
 
         if faces is None:
             faces = []
@@ -96,7 +96,10 @@ class Object:
         self.model_stack.append(self.model)
 
         # Shaders
-        self.shader = Shader(self)
+        self.vertex_shader_file = vertex_shader_file
+        self.fragment_shader_file = fragment_shader_file
+        shaders = Shader.open_shader_files(self.vertex_shader_file, self.fragment_shader_file)
+        self.shader = Shader(self, shaders[0], shaders[1])
 
         # Load after Initialized all the things
         self.subdivision_state.append(self.copy())
@@ -381,7 +384,7 @@ class Object:
         self.faces = self.triangle_fan(self.quad_faces)
         self.colors = Object.make_random_color(self.faces)
 
-        self.shader = Shader(self)
+        self.shader = Shader(self, self.vertex_shader_file, self.fragment_shader_file)
 
         self.subdivision_state.append(self.copy())
 

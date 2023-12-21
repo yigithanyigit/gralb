@@ -30,13 +30,20 @@ class ObjParser:
                         temp_faces = []
                         temp_faces_uv = []
                         temp_faces_normal = []
+
                         for vd in face_vertex:
                             temp_faces.append(int(vd[0]) - 1)
-                            temp_faces_uv.append(int(vd[1]) - 1)
-                            temp_faces_normal.append(int(vd[2]) - 1)
+                            if len(vd) > 1:
+                                temp_faces_uv.append(int(vd[1]) - 1)
+                            elif len(vd) > 2:
+                                temp_faces_normal.append(int(vd[2]) - 1)
+
                         self.faces.append(temp_faces)
-                        self.faces_uv.append(temp_faces_uv)
-                        self.faces_normal.append(temp_faces_normal)
+                        if len(temp_faces_uv) > 1:
+                            self.faces_uv.append(temp_faces_uv)
+                        elif len(temp_faces_normal) > 1:
+                            self.faces_normal.append(temp_faces_normal)
+
                     elif tokens[0] == 'vn':
                         # Normal
                         normal = list(map(float, tokens[1:]))

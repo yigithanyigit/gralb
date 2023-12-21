@@ -2,6 +2,7 @@ from OpenGL.GL import *
 from OpenGL.GLUT import *
 from OpenGL.GLU import *
 import sys
+import math
 
 from matrix4 import Matrix4
 from vector import Vector3
@@ -9,8 +10,8 @@ from object import Object
 from camera import Camera
 from scene import Scene
 from parser import ObjParser
-
-import numpy
+from utils import print_instructions
+from shader import ShaderList
 
 camera = Camera()
 scene = Scene()
@@ -28,13 +29,8 @@ programID = None
 # Global variables for buffer objects
 VAO = None
 
-# String containing vertex shader program written in GLSL
-with open('shaders/vertexShader.glsl', 'r') as fVertexShader:
-    strVertexShader = fVertexShader.read()
-
-# String containing fragment shader program written in GLSL
-with open('shaders/fragmentShader.glsl', 'r') as fFragmentShader:
-    strFragmentShader = fFragmentShader.read()
+# Shader List
+shaderList = ShaderList()
 
 # camera globals
 camPosition = Vector3(0.0, 0.0, -3.0)
@@ -50,13 +46,16 @@ def SceneInitiliazer():
     camera.lookAt(camPosition, Vector3(0, 0, 0), camUpAxis)
 
     parser = ObjParser()
-    print(sys.argv)
-    parser.parse(sys.argv[1])
-    obj = Object(parser.vertices, faces=parser.faces, normals=parser.normals, uv=parser.uv,
-                 face_normals=parser.faces_normal,
-                 face_uvs=parser.faces_uv)
+    if len(sys.argv) > 1:
+        parser.parse(sys.argv[1])
+        obj = Object(parser.vertices, vertex_shader_file='shaders/vertexShader.glsl', fragment_shader_file='shaders/fragmentShader.glsl',faces=parser.faces, normals=parser.normals, uv=parser.uv,
+                     face_normals=parser.faces_normal,
+                     face_uvs=parser.faces_uv)
 
-    scene.add_obj_to_scene(obj)
+        scene.add_obj_to_scene(obj)
+    else:
+        print("Expected .obj arugment")
+        exit()
 
 
 # Function that accepts a list of shaders, compiles them, and returns a handle to the compiled program
@@ -108,21 +107,18 @@ def createShader(shaderType, shaderCode):
 
 # Initialize the OpenGL environment
 def init():
-    initProgram()
+    print_instructions()
     SceneInitiliazer()
+    initProgram()
+
 
 
 # Set up the list of shaders, and call functions to compile them
 def initProgram():
-    shaderList = []
-
-    shaderList.append(createShader(GL_VERTEX_SHADER, strVertexShader))
-    shaderList.append(createShader(GL_FRAGMENT_SHADER, strFragmentShader))
 
     global programID
-    programID = createProgram(shaderList)
-
-    for shader in shaderList:
+    programID = createProgram(shaderList.compiled_shaders)
+    for shader in shaderList.compiled_shaders:
         glDeleteShader(shader)
 
 
@@ -151,7 +147,7 @@ def display():
 
 # keyboard input handler: exits the program if 'esc' is pressed
 def keyPressed(key, x, y):
-    global scenes, camera
+    global scenes, camera, wireframe
 
     # If escape is pressed, kill everything.
     # ord() is needed to get the keycode
@@ -202,6 +198,34 @@ def keyPressed(key, x, y):
         # When UV Mode on, subdivision not possible !!!!
         pass
 
+    elif ord(key) == ord('z'):
+        # Reset
+        scene.objects[0].set_model_matrix(Matrix4.identity())
+
+    elif ord(key) == ord('p'):
+        # Wireframe
+        wireframe = not wireframe
+
+    elif ord(key) == ord('m'):
+        # Wireframe
+        scene.objects[0].rotate_z(math.radians(15))
+    elif ord(key) == ord('n'):
+        # Wireframe
+        scene.objects[0].rotate_z(math.radians(-15))
+    display()
+    return
+
+
+def specialKeyPressed(*args):
+    global scene
+    if args[0] == GLUT_KEY_LEFT:
+        scene.objects[0].rotate_y(math.radians(15))
+    elif args[0] == GLUT_KEY_RIGHT:
+        scene.objects[0].rotate_y(math.radians(-15))
+    elif args[0] == GLUT_KEY_UP:
+        scene.objects[0].rotate_x(math.radians(15))
+    elif args[0] == GLUT_KEY_DOWN:
+        scene.objects[0].rotate_x(math.radians(-15))
     display()
     return
 
@@ -229,6 +253,7 @@ def main():
     # glutIdleFunc(display)
     glutReshapeFunc(reshape)
     glutKeyboardFunc(keyPressed)
+    glutSpecialFunc(specialKeyPressed)
 
     glutMainLoop();
 
