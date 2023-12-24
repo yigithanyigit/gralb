@@ -1,22 +1,14 @@
+import numpy
 from OpenGL.GL import *
 from OpenGL.GLUT import *
+
 from definitions import Definitions
-import numpy
+from utils import BaseSingletonList
 
 
-class ShaderList:
-    _instance = None
-
-    def __new__(cls, *args, **kwargs):
-        if not cls._instance:
-            cls._instance = super().__new__(cls)
-        return cls._instance
-
+class ShaderList(BaseSingletonList):
     def __init__(self):
-        if not hasattr(self, 'initialized'):
-            self.compiled_shaders = []
-            self.compiled_shaders_dict = dict()
-            self.initialized = True
+        super().__init__()
 
     @staticmethod
     # Function that creates and compiles shaders according to the given type (a GL enum value) and
@@ -47,13 +39,13 @@ class ShaderList:
     # Function that creates and compiles shaders according to the given type (a GL enum value) and
     # shader program (a string containing a GLSL program).
     def createShader(self, shaderType, shaderCode):
-        if hash(shaderCode) in self.compiled_shaders_dict:
-            return self.compiled_shaders_dict[hash(shaderCode)]
+        if hash(shaderCode) in self.data_dict:
+            return self.data_dict[hash(shaderCode)]
 
         shaderID = ShaderList.createShaderStatic(shaderType, shaderCode)
 
-        self.compiled_shaders.append(shaderID)
-        self.compiled_shaders_dict[hash(shaderCode)] = shaderID
+        self.data.append(shaderID)
+        self.data_dict[hash(shaderCode)] = shaderID
 
         return shaderID
 
@@ -69,7 +61,6 @@ class Shader:
         self.vertex_shader_precompiled = vertex_shader_precompiled
         self.fragment_shader_precompiled = fragment_shader_precompiled
 
-        print(type(self.vertex_shader_precompiled))
         self.vertex_shader_idx = ShaderList().createShader(GL_VERTEX_SHADER, self.vertex_shader_precompiled)
         self.fragment_shader_idx = ShaderList().createShader(GL_FRAGMENT_SHADER, self.fragment_shader_precompiled)
 
@@ -96,8 +87,22 @@ class Shader:
             finalVertexColors.extend(self.obj.colors[idx].elements * len(face))
             for v_idx in face:
                 finalVertexPositions.extend(self.obj.vertices[v_idx])
-
+        # Full Object Mapping
         """
+        for idx, uv in enumerate(self.obj.face_uvs):
+            for v_idx in uv:
+                finalVertexUvs.extend(self.obj.uv[v_idx])
+        """
+        # Per face mapping
+        flag = False
+        for face in self.obj.faces:
+            if flag is False:
+                finalVertexUvs.extend([1.0, 1.0, 0.0, 1.0, 0.0, 0.0, ])
+            else:
+                finalVertexUvs.extend([1.0, 1.0, 0.0, 0.0, 1.0, 0.0, ])
+            flag = not flag
+
+        """   
         # go over faces and assemble an array for all vertex data
         faceID = 0
         for face in faces:
@@ -110,7 +115,7 @@ class Shader:
         self.self.VBOData = numpy.array(finalVertexPositions + finalVertexColors + finalVertexUvs, dtype='float32')
         """
 
-        self.VBOData = numpy.array(finalVertexPositions + finalVertexColors, dtype='float32')
+        self.VBOData = numpy.array(finalVertexPositions + finalVertexColors + finalVertexUvs, dtype='float32')
 
         # Set up the vertex buffer that will store our vertex coordinates for OpenGL's access
 
@@ -130,11 +135,7 @@ class Shader:
         elementSize = numpy.dtype(numpy.float32).itemsize
 
         # third argument is criptic - in c_types if you multiply a data type with an integer you create an array of that type
-        glBufferData(GL_ARRAY_BUFFER,
-                     len(self.VBOData) * elementSize,
-                     self.VBOData,
-                     GL_STATIC_DRAW
-                     )
+        glBufferData(GL_ARRAY_BUFFER, len(self.VBOData) * elementSize, self.VBOData, GL_STATIC_DRAW)
 
         # setup vertex attributes
         offset = 0
@@ -146,16 +147,13 @@ class Shader:
 
         # define colors which are passed in location 1 - they start after all positions and has four floats consecutively
         offset += elementSize * self.vertexDim * self.nVertices
-        glVertexAttribPointer(1, self.vertexDim, GL_FLOAT, GL_FALSE, elementSize * self.vertexDim,
-                              ctypes.c_void_p(offset))
+        glVertexAttribPointer(1, 4, GL_FLOAT, GL_FALSE, elementSize * 4, ctypes.c_void_p(offset))
         glEnableVertexAttribArray(1)
 
-        """
         # define uvs which are passed in location 2 - they start after all positions and colors and has two floats per vertex
-        offset += elementSize * self.vertexDim * self.nVertices
+        offset += elementSize * 4 * self.nVertices
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, elementSize * 2, ctypes.c_void_p(offset))
         glEnableVertexAttribArray(2)
-        """
 
         # reset array buffers
         glBindBuffer(GL_ARRAY_BUFFER, 0)
@@ -179,31 +177,6 @@ class Shader:
                 strFragmentShader = fFragmentShader.read()
 
             return (strVertexShader, strFragmentShader)
-        except:
+        except FileNotFoundError:
             print("File Not Found")
             exit()
-
-    # Function that creates and compiles shaders according to the given type (a GL enum value) and
-    # shader program (a string containing a GLSL program).
-    def createShader(self, shaderType, shaderCode):
-        shaderID = glCreateShader(shaderType)
-        glShaderSource(shaderID, shaderCode)
-        glCompileShader(shaderID)
-
-        status = None
-        glGetShaderiv(shaderID, GL_COMPILE_STATUS, status)
-        if status == GL_FALSE:
-            # Note that getting the error log is much simpler in Python than in C/C++
-            # and does not require explicit handling of the string buffer
-            strInfoLog = glGetShaderInfoLog(shaderID)
-            strShaderType = ""
-            if shaderType is GL_VERTEX_SHADER:
-                strShaderType = "vertex"
-            elif shaderType is GL_GEOMETRY_SHADER:
-                strShaderType = "geometry"
-            elif shaderType is GL_FRAGMENT_SHADER:
-                strShaderType = "fragment"
-
-            print(b"Compilation failure for " + strShaderType + b" shader:\n" + strInfoLog)
-
-        return shaderID

@@ -26,7 +26,7 @@ class ObjParser:
                     elif tokens[0] == 'f':
                         # Face
                         face_vertex = [tuple(map(int, vertex.split('/'))) for vertex in tokens[1:]]
-                        #face = [int(vertex.split('/')[0]) - 1 for vertex in tokens[1:]]
+                        # face = [int(vertex.split('/')[0]) - 1 for vertex in tokens[1:]]
                         temp_faces = []
                         temp_faces_uv = []
                         temp_faces_normal = []
@@ -55,7 +55,6 @@ class ObjParser:
         except FileNotFoundError:
             print("There is no file that you entered")
             exit()
-
 
 
 if __name__ == "__main__":

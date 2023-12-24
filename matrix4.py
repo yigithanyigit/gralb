@@ -2,9 +2,11 @@
 # Erdem Taylan # StudentId: 310201112
 # 10/23
 
-from vector import *
-import numpy
 import math
+
+import numpy
+
+from vector import *
 
 
 class Matrix4:
@@ -14,10 +16,8 @@ class Matrix4:
         if len(arr) != 16:
             raise Exception("Arr should be 16")
         if transpose:
-            return cls(Vector4.create_from_array(arr[0:4]),
-                       Vector4.create_from_array(arr[4:8]),
-                       Vector4.create_from_array(arr[8:12]),
-                       Vector4.create_from_array(arr[12:16]))
+            return cls(Vector4.create_from_array(arr[0:4]), Vector4.create_from_array(arr[4:8]),
+                       Vector4.create_from_array(arr[8:12]), Vector4.create_from_array(arr[12:16]))
         else:
             return cls(Vector4.create_from_array([arr[0], arr[4], arr[8], arr[12]]),
                        Vector4.create_from_array([arr[1], arr[5], arr[9], arr[13]]),
@@ -183,10 +183,9 @@ class Matrix4:
         term_2_3 = numpy.divide(numpy.multiply(numpy.multiply(2, near), far), base)
 
         # https://en.wikibooks.org/wiki/GLSL_Programming/Vertex_Transformations
-        return Matrix4.create_from_array(numpy.array([term_0_0, 0.0, 0.0, 0.0,
-                                                      0.0, f, 0.0, 0.0,
-                                                      0.0, 0.0, term_2_2, -1,
-                                                      0.0, 0.0, term_2_3, 0.0], dtype='float32'), transpose=True)
+        return Matrix4.create_from_array(
+            numpy.array([term_0_0, 0.0, 0.0, 0.0, 0.0, f, 0.0, 0.0, 0.0, 0.0, term_2_2, -1, 0.0, 0.0, term_2_3, 0.0],
+                        dtype='float32'), transpose=True)
 
     @staticmethod
     # Implemented By Erdem Taylan
@@ -200,15 +199,13 @@ class Matrix4:
         camXAxis = camZAxis.cross_product(camUpAxis)
         camYAxis = camXAxis.cross_product(camZAxis)
 
-        rotMat = numpy.array([camXAxis[0], camYAxis[0], -camZAxis[0], 0.0,
-                              camXAxis[1], camYAxis[1], -camZAxis[1], 0.0,
-                              camXAxis[2], camYAxis[2], -camZAxis[2], 0.0,
-                              0.0, 0.0, 0.0, 1.0], dtype='float32').reshape(4, 4)
+        rotMat = numpy.array(
+            [camXAxis[0], camYAxis[0], -camZAxis[0], 0.0, camXAxis[1], camYAxis[1], -camZAxis[1], 0.0, camXAxis[2],
+             camYAxis[2], -camZAxis[2], 0.0, 0.0, 0.0, 0.0, 1.0], dtype='float32').reshape(4, 4)
 
-        traMat = numpy.array([1.0, 0.0, 0.0, 0.0,
-                              0.0, 1.0, 0.0, 0.0,
-                              0.0, 0.0, 1.0, 0.0,
-                              -camPosition[0], -camPosition[1], -camPosition[2], 1.0], dtype='float32').reshape(4, 4)
+        traMat = numpy.array(
+            [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, -camPosition[0], -camPosition[1],
+             -camPosition[2], 1.0], dtype='float32').reshape(4, 4)
 
         return Matrix4.create_from_array(traMat.dot(rotMat).reshape(16, ).tolist(), transpose=True)
 

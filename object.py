@@ -2,19 +2,19 @@ import copy
 import random
 from typing import List
 
-from parser import ObjParser
-from matrix4 import Matrix4
-from vector import Vector3, Vector4, Edge
 from OpenGL.GL import *
+
 from adjacencyList import AdjacencyList
-from utils import remove_duplicates
-from definitions import Definitions
+from matrix4 import Matrix4
+from parser import ObjParser
 from shader import Shader
+from utils import remove_duplicates
+from vector import Vector3, Vector4, Edge
 
 
 class Object:
-    def __init__(self, vertices: List[Vector3], vertex_shader_file, fragment_shader_file,colors: List[Vector3] = None,
-                 faces=None, edges=None,adjacency_list=None, normals=None, uv=None, face_normals=None, face_uvs=None):
+    def __init__(self, vertices: List[Vector3], vertex_shader_file, fragment_shader_file, colors: List[Vector4] = None,
+                 faces=None, edges=None, adjacency_list=None, normals=None, uv=None, face_normals=None, face_uvs=None):
 
         if faces is None:
             faces = []
@@ -33,6 +33,9 @@ class Object:
 
         self.vertices = vertices
         self.faces = faces
+
+        # Quad Faces and Quad Edges mostly used for subdivision things.
+        # If you gonna just render something you may do not need.
         self.quad_faces = None
 
         self.normals = normals
@@ -51,6 +54,7 @@ class Object:
             self.quad_edges = []
             self.quad_edges = Object.make_quad_edges(self.quad_faces)
             self.faces = self.triangle_fan(self.faces)
+            self.face_uvs = self.triangle_fan(self.face_uvs)
         elif self.min_vertex_per_face == 3:
             self.quad_faces = []
             for f in self.faces:
@@ -59,6 +63,7 @@ class Object:
             self.quad_edges = []
             self.quad_edges = Object.make_quad_edges(self.quad_faces)
             self.faces = self.triangle_fan(self.faces)
+            self.face_uvs = self.triangle_fan(self.face_uvs)
 
         if edges is None:
             self.edges = []
@@ -227,7 +232,8 @@ class Object:
             r = random.randrange(0, 256) / 255
             g = random.randrange(0, 256) / 255
             b = random.randrange(0, 256) / 255
-            color.append(Vector3(r, g, b))
+            a = 1
+            color.append(Vector4(r, g, b, a))
         return color
 
     @staticmethod
@@ -272,7 +278,6 @@ class Object:
     def draw(self):
         if self.calculated_stack is False:
             self.calculate()
-
 
         # bind to our VAO
         glBindVertexArray(self.shader.VAO)
@@ -363,14 +368,14 @@ class Object:
             # First 4 of temp_vertices is control_points, the other 4 is Edge_points the last one is Face_point
 
             temp_faces = (
-                [edge_points_offset + temp_vertices[0], face_points_offset + temp_vertices[4],
-                 temp_vertices[8], face_points_offset + temp_vertices[7]],
+                [edge_points_offset + temp_vertices[0], face_points_offset + temp_vertices[4], temp_vertices[8],
+                 face_points_offset + temp_vertices[7]],
                 [face_points_offset + temp_vertices[4], edge_points_offset + temp_vertices[1],
                  face_points_offset + temp_vertices[5], temp_vertices[8]],
-                [temp_vertices[8], face_points_offset + temp_vertices[5],
-                 edge_points_offset + temp_vertices[2], face_points_offset + temp_vertices[6]],
-                [face_points_offset + temp_vertices[7], temp_vertices[8],
-                 face_points_offset + temp_vertices[6], edge_points_offset + temp_vertices[3]])
+                [temp_vertices[8], face_points_offset + temp_vertices[5], edge_points_offset + temp_vertices[2],
+                 face_points_offset + temp_vertices[6]],
+                [face_points_offset + temp_vertices[7], temp_vertices[8], face_points_offset + temp_vertices[6],
+                 edge_points_offset + temp_vertices[3]])
 
             for i in temp_faces:
                 faces.append(i)
@@ -434,11 +439,7 @@ class Object:
         # Find all the edges in a face
         edges = []
         for q, face in enumerate(faces):
-            es = (Edge(face[0], face[1]),
-                  Edge(face[1], face[2]),
-                  Edge(face[2], face[3]),
-                  Edge(face[3], face[0]),
-                  )
+            es = (Edge(face[0], face[1]), Edge(face[1], face[2]), Edge(face[2], face[3]), Edge(face[3], face[0]),)
             for e in es:
                 edges.append(e)
         return remove_duplicates(edges)
@@ -455,10 +456,11 @@ class Object:
 
     def override_object(self, obj):
         # https://stackoverflow.com/questions/11637293/iterate-over-object-attributes-in-python
-        attributes = [attr for attr in dir(self) if not attr.startswith('__') and not callable(getattr(obj, attr)) and attr != 'subdivision'
-                      and attr != 'subdivision_state']
+        attributes = [attr for attr in dir(self) if not attr.startswith('__') and not callable(
+            getattr(obj, attr)) and attr != 'subdivision' and attr != 'subdivision_state']
         for attr in attributes:
             setattr(self, attr, getattr(obj, attr))
+
 
 if "__main__" == __name__:
     obj_parser = ObjParser()

@@ -1,10 +1,10 @@
 import math
-
-import numpy
-from OpenGL.GLU import *
-from vector import Vector3
-from matrix4 import Matrix4
 import typing
+
+from OpenGL.GL import *
+
+from matrix4 import Matrix4
+from vector import Vector3
 
 
 class Camera:
@@ -16,14 +16,15 @@ class Camera:
 
         self.eye_default = Vector3(0, 0, -5)
         self.target_default = Vector3(0, 0, 0)
-        self.up_default = Vector3(0,1,0)
-        self.direction = Vector3(0,0,1)
+        self.up_default = Vector3(0, 1, 0)
+        self.direction = Vector3(0, 0, 1)
 
         self.pitch = 0
         self.yaw = 0
         self.roll = 0
         self.constant = 0.174
 
+        self.wireframe = False
 
     def _add_matrix_to_stack(self, op):
         self.stack.append(op)
@@ -48,7 +49,8 @@ class Camera:
         self.calculated_stack = True
         return self
     """
-    def lookAt(self, eye, target, upDir = Vector3(0,1,0)):
+
+    def lookAt(self, eye, target, upDir=Vector3(0, 1, 0)):
 
         self.eye_default = eye
         self.target_default = target
@@ -136,7 +138,6 @@ class Camera:
     def move_right(self):
         self.eye_default += self.direction.cross_product(self.up_default)
 
-
     def calculate(self):
 
         # Ortbital Camera
@@ -152,3 +153,18 @@ class Camera:
         z = math.cos(self.yaw) * math.cos(self.pitch)
         self.direction = Vector3(x, y, z).normalize()
         self.lookAt(self.eye_default, self.direction + self.eye_default, Vector3(0, 1, 0))
+
+    def open_wireframe(self):
+        self.wireframe = True
+
+    def close_wireframe(self):
+        self.wireframe = False
+
+    def toggle_wireframe(self):
+        self.wireframe = not self.wireframe
+
+    def render_wireframe(self):
+        if self.wireframe is True:
+            glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
+        else:
+            glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)

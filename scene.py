@@ -1,10 +1,9 @@
+from typing import List
+
 from OpenGL.GL import *
 from OpenGL.GLUT import *
-from typing import List
+
 from object import Object
-from shader import Shader
-
-
 
 
 class Scene:
@@ -14,7 +13,8 @@ class Scene:
         else:
             self.objects = objects
 
-
+    def selected_objects(self):
+        pass
 
     def add_obj_to_scene(self, obj):
         self.objects.append(obj)

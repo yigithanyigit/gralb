@@ -3,7 +3,6 @@
 # 10/23
 
 import math
-import numpy as np
 
 
 class Vector:
@@ -148,8 +147,7 @@ class Vector3(Vector):
     def cross_product(self, other):
         result = Vector3(self.elements[1] * other.elements[2] - self.elements[2] * other.elements[1],
                          self.elements[2] * other.elements[0] - self.elements[0] * other.elements[2],
-                         self.elements[0] * other.elements[1] - self.elements[1] * other.elements[0]
-                         )
+                         self.elements[0] * other.elements[1] - self.elements[1] * other.elements[0])
         return result
 
     def x(self):
@@ -209,6 +207,21 @@ class Vector4(Vector):
 
     def w(self):
         return float(self.elements[2])
+
+    def normalize(self):
+        xxyyzzww = self.x() * self.x() + self.y() * self.y() + self.z() * self.z() + self.w() * self.w()
+
+        invLength = 1.0 / math.sqrt(xxyyzzww)
+        self.elements[0] *= invLength
+        self.elements[1] *= invLength
+        self.elements[2] *= invLength
+        self.elements[3] *= invLength
+
+        return self
+
+
+class HCoord(Vector4):
+    pass
 
 
 if __name__ == "__main__":

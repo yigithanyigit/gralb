@@ -1,6 +1,6 @@
-from parser import ObjParser
-from vector import Edge, Vector3
 from collections import OrderedDict
+
+from parser import ObjParser
 from utils import remove_duplicates
 
 

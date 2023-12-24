@@ -1,22 +1,25 @@
-from OpenGL.GL import *
-from OpenGL.GLUT import *
-from OpenGL.GLU import *
-import sys
 import math
 
-from matrix4 import Matrix4
-from vector import Vector3
-from object import Object
+from OpenGL.GL import *
+from OpenGL.GLUT import *
+
 from camera import Camera
-from scene import Scene
+from matrix4 import Matrix4
+from object import Object
 from parser import ObjParser
-from utils import print_instructions
+from program import Program
+from scene import Scene
 from shader import ShaderList
+from texture import Texture
+from utils import print_instructions
+from vector import Vector3
 
 camera = Camera()
 scene = Scene()
 obj = None
-wireframe = False
+
+# Texture filepaths
+textureList = ['textures/texture1.png', 'textures/texture2.png']
 
 #
 # GLOBALS
@@ -31,6 +34,9 @@ VAO = None
 
 # Shader List
 shaderList = ShaderList()
+
+# Blend factor
+blendFactor = 0.5
 
 # camera globals
 camPosition = Vector3(0.0, 0.0, -3.0)
@@ -48,9 +54,9 @@ def SceneInitiliazer():
     parser = ObjParser()
     if len(sys.argv) > 1:
         parser.parse(sys.argv[1])
-        obj = Object(parser.vertices, vertex_shader_file='shaders/vertexShader.glsl', fragment_shader_file='shaders/fragmentShader.glsl',faces=parser.faces, normals=parser.normals, uv=parser.uv,
-                     face_normals=parser.faces_normal,
-                     face_uvs=parser.faces_uv)
+        obj = Object(parser.vertices, vertex_shader_file='shaders/vertexShader.glsl',
+                     fragment_shader_file='shaders/fragmentShader.glsl', faces=parser.faces, normals=parser.normals,
+                     uv=parser.uv, face_normals=parser.faces_normal, face_uvs=parser.faces_uv)
 
         scene.add_obj_to_scene(obj)
     else:
@@ -58,68 +64,48 @@ def SceneInitiliazer():
         exit()
 
 
-# Function that accepts a list of shaders, compiles them, and returns a handle to the compiled program
-def createProgram(shaderList):
-    programID = glCreateProgram()
-
-    for shader in shaderList:
-        glAttachShader(programID, shader)
-
-    glLinkProgram(programID)
-
-    status = glGetProgramiv(programID, GL_LINK_STATUS)
-    if status == GL_FALSE:
-        strInfoLog = glGetProgramInfoLog(programID)
-        print(b"Linker failure: \n" + strInfoLog)
-
-    # important for cleanup
-    for shaderID in shaderList:
-        glDetachShader(programID, shaderID)
-
-    return programID
-
-
-# Function that creates and compiles shaders according to the given type (a GL enum value) and
-# shader program (a string containing a GLSL program).
-def createShader(shaderType, shaderCode):
-    shaderID = glCreateShader(shaderType)
-    glShaderSource(shaderID, shaderCode)
-    glCompileShader(shaderID)
-
-    status = None
-    glGetShaderiv(shaderID, GL_COMPILE_STATUS, status)
-    if status == GL_FALSE:
-        # Note that getting the error log is much simpler in Python than in C/C++
-        # and does not require explicit handling of the string buffer
-        strInfoLog = glGetShaderInfoLog(shaderID)
-        strShaderType = ""
-        if shaderType is GL_VERTEX_SHADER:
-            strShaderType = "vertex"
-        elif shaderType is GL_GEOMETRY_SHADER:
-            strShaderType = "geometry"
-        elif shaderType is GL_FRAGMENT_SHADER:
-            strShaderType = "fragment"
-
-        print(b"Compilation failure for " + strShaderType + b" shader:\n" + strInfoLog)
-
-    return shaderID
-
-
 # Initialize the OpenGL environment
 def init():
     print_instructions()
     SceneInitiliazer()
     initProgram()
+    initTextures(textureList)
 
+
+# texture stuff
+def initTextures(texFilePath):
+    # we need to bind to the program to set texture related params
+    global programID
+    glUseProgram(programID)
+
+    for idx, file_path in enumerate(texFilePath):
+        # set shader stuff
+        tex = Texture(file_path)
+        texID = tex.id
+        glUseProgram(programID)
+        texLocation = glGetUniformLocation(programID, f"tex{texID}")
+
+        # now activate texture units
+        glActiveTexture(GL_TEXTURE0 + texID)
+        glBindTexture(GL_TEXTURE_2D, texID)
+        glUniform1i(texLocation, idx)
+        # reset program
+        glUseProgram(0)
+
+
+def changeBlendFactor():
+    global blendFactor, programID
+    glUseProgram(programID)
+    blendFactorLocation = glGetUniformLocation(programID, "blendFactor")
+    glUniform1f(blendFactorLocation, blendFactor)
+    glUseProgram(0)
 
 
 # Set up the list of shaders, and call functions to compile them
 def initProgram():
-
     global programID
-    programID = createProgram(shaderList.compiled_shaders)
-    for shader in shaderList.compiled_shaders:
-        glDeleteShader(shader)
+    program = Program(shaderList.data)
+    programID = program.id
 
 
 # Called to update the display.
@@ -131,23 +117,18 @@ def display():
     glDepthFunc(GL_LESS)  # The Type Of Depth Test To Do
     glEnable(GL_DEPTH_TEST)  # Enables Depth Testing
 
-    global wireframe
-    if wireframe is True:
-        glPolygonMode(GL_FRONT_AND_BACK, GL_LINE)
-    else:
-        glPolygonMode(GL_FRONT_AND_BACK, GL_FILL)
+    camera.render_wireframe()
 
     # use our program
     glUseProgram(programID)
 
     scene.draw_scene(camera.get_view_matrix().to_numpy_array(),
-                     Matrix4.getProjMatrix(camNear, camFar, camAspect, camFov)
-                     .to_numpy_array(), programID)
+                     Matrix4.getProjMatrix(camNear, camFar, camAspect, camFov).to_numpy_array(), programID)
 
 
 # keyboard input handler: exits the program if 'esc' is pressed
 def keyPressed(key, x, y):
-    global scenes, camera, wireframe
+    global scenes, camera, wireframe, blendFactor
 
     # If escape is pressed, kill everything.
     # ord() is needed to get the keycode
@@ -193,25 +174,28 @@ def keyPressed(key, x, y):
     elif ord(key) == ord('l'):
         scene.objects[0].decrease_subdivision()
 
-    elif ord(key) == ord('u'):
-        # UV MODE ON OFF
-        # When UV Mode on, subdivision not possible !!!!
-        pass
-
     elif ord(key) == ord('z'):
         # Reset
         scene.objects[0].set_model_matrix(Matrix4.identity())
 
     elif ord(key) == ord('p'):
         # Wireframe
-        wireframe = not wireframe
+        camera.toggle_wireframe()
 
     elif ord(key) == ord('m'):
-        # Wireframe
         scene.objects[0].rotate_z(math.radians(15))
+
     elif ord(key) == ord('n'):
-        # Wireframe
         scene.objects[0].rotate_z(math.radians(-15))
+
+    elif ord(key) == ord('b'):
+        blendFactor = min(1.0, blendFactor + 0.1)
+        changeBlendFactor()
+
+    elif ord(key) == ord('v'):
+        blendFactor = max(0.0, blendFactor - 0.1)
+        changeBlendFactor()
+
     display()
     return
 
@@ -246,7 +230,7 @@ def main():
 
     glutInitWindowPosition(300, 200)
 
-    window = glutCreateWindow("CENG488 Hello Triangle")
+    window = glutCreateWindow("OpenGL Renderer")
 
     init()
     glutDisplayFunc(display)
@@ -254,8 +238,9 @@ def main():
     glutReshapeFunc(reshape)
     glutKeyboardFunc(keyPressed)
     glutSpecialFunc(specialKeyPressed)
+    glutSpecialFunc(specialKeyPressed)
 
-    glutMainLoop();
+    glutMainLoop()
 
 
 if __name__ == '__main__':
