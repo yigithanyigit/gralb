@@ -13,13 +13,13 @@ from shader import ShaderList
 from texture import Texture
 from utils import print_instructions
 from vector import Vector3
+from light import DirectionalLight, SpotLight, PointLight
 
 camera = Camera()
 scene = Scene()
-obj = None
 
 # Texture filepaths
-textureList = ['textures/texture1.png', 'textures/texture2.png']
+textureList = ['textures/img.png']
 
 #
 # GLOBALS
@@ -45,53 +45,49 @@ camNear = 1.0
 camFar = 100.0
 camAspect = 1.0
 camFov = 60.0
-
+    
 
 def SceneInitiliazer():
-    global camera, scenes, obj
+    global camera, scenes
     camera.lookAt(camPosition, Vector3(0, 0, 0), camUpAxis)
 
     parser = ObjParser()
     if len(sys.argv) > 1:
         parser.parse(sys.argv[1])
-        obj = Object(parser.vertices, vertex_shader_file='shaders/vertexShader.glsl',
-                     fragment_shader_file='shaders/fragmentShader.glsl', faces=parser.faces, normals=parser.normals,
-                     uv=parser.uv, face_normals=parser.faces_normal, face_uvs=parser.faces_uv)
+        obj_attr = parser.get_attribute_list()
 
-        scene.add_obj_to_scene(obj)
+        """
+        obj = Object(attr.vertices, vertex_shader_file='vertexShader.glsl',
+                     fragment_shader_file='fragmentShader.glsl', faces=attr.faces, normals=attr.normals,
+                     uv=attr.uv, face_normals=attr.faces_normal, face_uvs=attr.faces_uv)
+        """
+        #obj = Object.create_from_obj_attributes(attr, 'vertexShader.glsl', fragment_shader='fragmentShader.glsl')
+        for o in obj_attr:
+            obj = Object.create_from_obj_attributes(o, 'shaders/vertexShaderBlinn-Phong.glsl',
+                                                    fragment_shader='shaders/fragmentShaderLight.glsl', texture=textureList)
+            scene.add_obj_to_scene(obj)
     else:
         print("Expected .obj arugment")
         exit()
 
+    point_light = PointLight(lightPosition=[-3.0, 0.0, -3.0], lightColor=[1.0, 1.0, 1.0])
+    directional_light = DirectionalLight(lightDir=[0.0, 0.0, 1.0], lightColor=[1.0, 1.0, 1.0])
+    spot_light = SpotLight(lightPosition=[0.0, 100.0, -100.0], lightDir=[0.0, -1.0, 1.0], lightColor=[1.0, 1.0, 1.0],
+                           cutoff=70.0)
+
+    scene.add_light_to_scene(point_light)
+    scene.add_light_to_scene(directional_light)
+    scene.add_light_to_scene(spot_light)
+
+    point_light.set_uniform("pointLight")
+    directional_light.set_uniform("directionalLight")
+    spot_light.set_uniform("spotLight")
 
 # Initialize the OpenGL environment
 def init():
+    global programID
     print_instructions()
     SceneInitiliazer()
-    initProgram()
-    initTextures(textureList)
-
-
-# texture stuff
-def initTextures(texFilePath):
-    # we need to bind to the program to set texture related params
-    global programID
-    glUseProgram(programID)
-
-    for idx, file_path in enumerate(texFilePath):
-        # set shader stuff
-        tex = Texture(file_path)
-        texID = tex.id
-        glUseProgram(programID)
-        texLocation = glGetUniformLocation(programID, f"tex{texID}")
-
-        # now activate texture units
-        glActiveTexture(GL_TEXTURE0 + texID)
-        glBindTexture(GL_TEXTURE_2D, texID)
-        glUniform1i(texLocation, idx)
-        # reset program
-        glUseProgram(0)
-
 
 def changeBlendFactor():
     global blendFactor, programID
@@ -99,14 +95,6 @@ def changeBlendFactor():
     blendFactorLocation = glGetUniformLocation(programID, "blendFactor")
     glUniform1f(blendFactorLocation, blendFactor)
     glUseProgram(0)
-
-
-# Set up the list of shaders, and call functions to compile them
-def initProgram():
-    global programID
-    program = Program(shaderList.data)
-    programID = program.id
-
 
 # Called to update the display.
 # Because we are using double-buffering, glutSwapBuffers is called at the end
@@ -116,14 +104,11 @@ def display():
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT)
     glDepthFunc(GL_LESS)  # The Type Of Depth Test To Do
     glEnable(GL_DEPTH_TEST)  # Enables Depth Testing
-
     camera.render_wireframe()
 
-    # use our program
-    glUseProgram(programID)
-
     scene.draw_scene(camera.get_view_matrix().to_numpy_array(),
-                     Matrix4.getProjMatrix(camNear, camFar, camAspect, camFov).to_numpy_array(), programID)
+                      Matrix4.getProjMatrix(camNear, camFar, camAspect, camFov).to_numpy_array())
+
 
 
 # keyboard input handler: exits the program if 'esc' is pressed
@@ -188,6 +173,35 @@ def keyPressed(key, x, y):
     elif ord(key) == ord('n'):
         scene.objects[0].rotate_z(math.radians(-15))
 
+    elif ord(key) == ord('v'):
+        for light in scene.lights:
+            if isinstance(light, PointLight):
+                if light.animation is None:
+                    light.animation = PointLight.cyclical_move_by_frame
+                else:
+                    light.animation = None
+
+    elif ord(key) == ord('b'):
+        for obj in scene.objects:
+            obj.toggle_blinn_phong()
+
+
+    elif ord(key) == ord('1'):
+        for light in scene.lights:
+            if isinstance(light, PointLight):
+                light.toggle()
+
+    elif ord(key) == ord('2'):
+        for light in scene.lights:
+            if isinstance(light, DirectionalLight):
+                light.toggle()
+
+    elif ord(key) == ord('3'):
+        for light in scene.lights:
+            if isinstance(light, SpotLight):
+                light.toggle()
+
+    """
     elif ord(key) == ord('b'):
         blendFactor = min(1.0, blendFactor + 0.1)
         changeBlendFactor()
@@ -195,6 +209,7 @@ def keyPressed(key, x, y):
     elif ord(key) == ord('v'):
         blendFactor = max(0.0, blendFactor - 0.1)
         changeBlendFactor()
+    """
 
     display()
     return
@@ -224,8 +239,8 @@ def main():
     glutInit()
     glutInitDisplayMode(GLUT_DOUBLE | GLUT_ALPHA | GLUT_DEPTH | GLUT_3_2_CORE_PROFILE)
 
-    width = 500;
-    height = 500;
+    width = 720;
+    height = 720;
     glutInitWindowSize(width, height)
 
     glutInitWindowPosition(300, 200)
@@ -234,10 +249,9 @@ def main():
 
     init()
     glutDisplayFunc(display)
-    # glutIdleFunc(display)
+    glutIdleFunc(display)
     glutReshapeFunc(reshape)
     glutKeyboardFunc(keyPressed)
-    glutSpecialFunc(specialKeyPressed)
     glutSpecialFunc(specialKeyPressed)
 
     glutMainLoop()

@@ -6,14 +6,24 @@ from OpenGL.GL import *
 
 from adjacencyList import AdjacencyList
 from matrix4 import Matrix4
-from parser import ObjParser
-from shader import Shader
+from parser import ObjParser, ObjAttributes
+from shader import Shader, ShaderList
 from utils import remove_duplicates
 from vector import Vector3, Vector4, Edge
+from material import Material
+from texture import Texture, TextureList
+from program import Program, ProgramList
 
 
 class Object:
-    def __init__(self, vertices: List[Vector3], vertex_shader_file, fragment_shader_file, colors: List[Vector4] = None,
+
+    @classmethod
+    def create_from_obj_attributes(cls, obj_attribute: ObjAttributes, vertex_shader, fragment_shader, texture, colors=None):
+        return cls(obj_attribute.vertices, colors=colors, faces=obj_attribute.faces, edges=None, adjacency_list=None,
+                   normals=obj_attribute.normals, uv=obj_attribute.uv, face_normals=obj_attribute.faces_normal, face_uvs=obj_attribute.faces_uv,
+                   vertex_shader_file=vertex_shader, fragment_shader_file=fragment_shader, texture=texture)
+
+    def __init__(self, vertices: List[Vector3], vertex_shader_file, fragment_shader_file, texture, colors: List[Vector4] = None,
                  faces=None, edges=None, adjacency_list=None, normals=None, uv=None, face_normals=None, face_uvs=None):
 
         if faces is None:
@@ -53,8 +63,11 @@ class Object:
             self.quad_faces = faces
             self.quad_edges = []
             self.quad_edges = Object.make_quad_edges(self.quad_faces)
+
             self.faces = self.triangle_fan(self.faces)
             self.face_uvs = self.triangle_fan(self.face_uvs)
+            self.face_normals = self.triangle_fan(self.face_normals)
+
         elif self.min_vertex_per_face == 3:
             self.quad_faces = []
             for f in self.faces:
@@ -62,8 +75,10 @@ class Object:
                     self.quad_faces.append(f)
             self.quad_edges = []
             self.quad_edges = Object.make_quad_edges(self.quad_faces)
+
             self.faces = self.triangle_fan(self.faces)
             self.face_uvs = self.triangle_fan(self.face_uvs)
+            self.face_normals = self.triangle_fan(self.face_normals)
 
         if edges is None:
             self.edges = []
@@ -105,6 +120,21 @@ class Object:
         self.fragment_shader_file = fragment_shader_file
         shaders = Shader.open_shader_files(self.vertex_shader_file, self.fragment_shader_file)
         self.shader = Shader(self, shaders[0], shaders[1])
+
+        #Blinn Phong State
+        self.blinn_phong_state = True
+
+        # Create A program
+        self.program = Program(self.shader.get_shader_pair())
+
+        # Material Properties
+        self.material = Material(90.0)
+        self.init_material()
+
+        # Texture File Path
+        self.texture_file_path = texture
+        # Init texture
+        self.init_texture()
 
         # Load after Initialized all the things
         self.subdivision_state.append(self.copy())
@@ -151,37 +181,6 @@ class Object:
 
     def get_z(self):
         return self.model.rows[3][2]
-
-    def get_middle_point(self):
-        point = Vector3()
-        index = 0
-        for idx, f in enumerate(self.faces):
-            for v in f:
-                point = point + self.vertices[v]
-            index = idx
-        point = point / (index + 1)
-        return point
-
-    # it is not a proper function
-    def go_to(self, x, y, z):
-        # current_loc = Vector3(self.get_x(), self.get_y(), self.get_z())
-        current_loc = self.get_middle_point()
-        destination = Vector3(-x, -y, -z)
-        if current_loc == destination:
-            return
-
-        new_loc = Vector3()
-        xdiff = x - current_loc.x()
-        ydiff = y - current_loc.y()
-        zdiff = z - current_loc.z()
-
-        new_loc.set_x(current_loc.x() + xdiff)
-        new_loc.set_y(current_loc.y() + ydiff)
-        new_loc.set_z(current_loc.z() + zdiff)
-
-        print(new_loc)
-        self._add_matrix_to_stack(Matrix4.T(-new_loc.x(), -new_loc.y(), -new_loc.z()))
-        self.calculated_stack = False
 
     @staticmethod
     def triangle_fan_cut(face):
@@ -460,6 +459,43 @@ class Object:
             getattr(obj, attr)) and attr != 'subdivision' and attr != 'subdivision_state']
         for attr in attributes:
             setattr(self, attr, getattr(obj, attr))
+
+
+    def init_material(self):
+        glUseProgram(self.program.id)
+
+        shininess_location = glGetUniformLocation(self.program.id, f"material.shininess")
+        glUniform1f(shininess_location, self.material.shininess)
+
+        glUseProgram(0)
+
+
+    # Texture Stuff
+    # Function has only supports one texture per objects due to texLocation
+    def init_texture(self):
+        # we need to bind to the program to set texture related params
+        glUseProgram(self.program.id)
+
+        for idx, file_path in enumerate(self.texture_file_path):
+            # set shader stuff
+            tex = Texture(file_path)
+            texID = tex.id
+            glUseProgram(self.program.id)
+            texLocation = glGetUniformLocation(self.program.id, f"tex{texID}")
+
+            # now activate texture units
+            glActiveTexture(GL_TEXTURE0 + texID)
+            glBindTexture(GL_TEXTURE_2D, texID)
+            glUniform1i(texLocation, idx)
+            # reset program
+            glUseProgram(0)
+
+    def toggle_blinn_phong(self):
+        glUseProgram(self.program.id)
+        location = glGetUniformLocation(self.program.id,'blinnPhong')
+        self.blinn_phong_state = not self.blinn_phong_state
+        glUniform1i(location, self.blinn_phong_state)
+        glUseProgram(0)
 
 
 if "__main__" == __name__:

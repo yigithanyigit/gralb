@@ -3,6 +3,7 @@
 # 10/23
 
 import math
+import numpy
 
 
 class Vector:
@@ -105,6 +106,9 @@ class Vector:
 
     def calculate_projection(self):
         pass
+
+    def to_numpy_array(self):
+        return numpy.array(self.elements, dtype='float32')
 
 
 class Vector2(Vector):

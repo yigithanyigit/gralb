@@ -50,6 +50,13 @@ class Texture:
     def _load_texture(self):
         image = Image.open(self.file_path).transpose(Image.FLIP_TOP_BOTTOM)
 
+        mode = GL_RGBA
+        if image.mode == 'RGBA':
+            mode = GL_RGBA
+        elif image.mode == 'RGB':
+            mode = GL_RGB
+
+
         texID = glGenTextures(1)
         glBindTexture(GL_TEXTURE_2D, texID)
 
@@ -61,7 +68,7 @@ class Texture:
         glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR)
 
         # copy texture data
-        glTexImage2D(GL_TEXTURE_2D, 0, GL_RGB, image.size[0], image.size[1], 0, GL_RGB, GL_UNSIGNED_BYTE,
+        glTexImage2D(GL_TEXTURE_2D, 0, mode, image.size[0], image.size[1], 0, mode, GL_UNSIGNED_BYTE,
                      numpy.frombuffer(image.tobytes(), dtype=numpy.uint8))
         glGenerateMipmap(GL_TEXTURE_2D)
 

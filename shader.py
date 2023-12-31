@@ -64,13 +64,6 @@ class Shader:
         self.vertex_shader_idx = ShaderList().createShader(GL_VERTEX_SHADER, self.vertex_shader_precompiled)
         self.fragment_shader_idx = ShaderList().createShader(GL_FRAGMENT_SHADER, self.fragment_shader_precompiled)
 
-        """
-        self.shader_list = []
-        self.shader_files = self.open_shader_files()
-        self.shader_list.append(self.createShader(GL_VERTEX_SHADER, self.shader_files[0]))
-        self.shader_list.append(self.createShader(GL_FRAGMENT_SHADER, self.shader_files[1]))
-        """
-
         self.obj = obj
         self.initVertexBufferData()
         self.initVertexBuffer()
@@ -80,6 +73,7 @@ class Shader:
         finalVertexPositions = []
         finalVertexColors = []
         finalVertexUvs = []
+        finalVertexNormals = []
 
         self.nVertices = 0
         for idx, face in enumerate(self.obj.faces):
@@ -88,12 +82,12 @@ class Shader:
             for v_idx in face:
                 finalVertexPositions.extend(self.obj.vertices[v_idx])
         # Full Object Mapping
-        """
         for idx, uv in enumerate(self.obj.face_uvs):
             for v_idx in uv:
                 finalVertexUvs.extend(self.obj.uv[v_idx])
-        """
+
         # Per face mapping
+        """
         flag = False
         for face in self.obj.faces:
             if flag is False:
@@ -101,21 +95,14 @@ class Shader:
             else:
                 finalVertexUvs.extend([1.0, 1.0, 0.0, 0.0, 1.0, 0.0, ])
             flag = not flag
-
-        """   
-        # go over faces and assemble an array for all vertex data
-        faceID = 0
-        for face in faces:
-            for vertex in face:
-                finalVertexPositions.extend(vertexPositions[vertex])
-                finalVertexColors.extend(faceColors[faceID])
-                finalVertexUvs.extend(vertexUVs[vertex])
-            faceID += 1
-
-        self.self.VBOData = numpy.array(finalVertexPositions + finalVertexColors + finalVertexUvs, dtype='float32')
         """
 
-        self.VBOData = numpy.array(finalVertexPositions + finalVertexColors + finalVertexUvs, dtype='float32')
+        for idx, uv in enumerate(self.obj.face_normals):
+            for v_idx in uv:
+                finalVertexNormals.extend(self.obj.normals[v_idx])
+
+        self.VBOData = numpy.array(finalVertexPositions + finalVertexColors + finalVertexUvs + finalVertexNormals, dtype='float32')
+
 
         # Set up the vertex buffer that will store our vertex coordinates for OpenGL's access
 
@@ -155,6 +142,12 @@ class Shader:
         glVertexAttribPointer(2, 2, GL_FLOAT, GL_FALSE, elementSize * 2, ctypes.c_void_p(offset))
         glEnableVertexAttribArray(2)
 
+        # define normals which are passed in location 3
+        # define normals which are passed in location 3 - they start after all positions, colors and uvs and has four floats per vertex
+        offset += elementSize * 2 * self.nVertices
+        glVertexAttribPointer(3, self.vertexDim, GL_FLOAT, GL_FALSE, elementSize * self.vertexDim, ctypes.c_void_p(offset))
+        glEnableVertexAttribArray(3)
+
         # reset array buffers
         glBindBuffer(GL_ARRAY_BUFFER, 0)
         glBindVertexArray(0)
@@ -164,6 +157,9 @@ class Shader:
 
     def get_VAO(self):
         return self.VAO
+
+    def get_shader_pair(self):
+        return (self.vertex_shader_idx, self.fragment_shader_idx)
 
     @staticmethod
     def open_shader_files(vertex_shader_path, fragment_shader_path):

@@ -25,7 +25,7 @@ class Program:
         status = glGetProgramiv(self.id, GL_LINK_STATUS)
         if status == GL_FALSE:
             strInfoLog = glGetProgramInfoLog(self.id)
-            print(b"Linker failure: \n" + strInfoLog)
+            print(b"Linker failure:" + strInfoLog)
 
         self.detach_shaders()
 
